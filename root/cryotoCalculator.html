@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+
+<!-- 📱 կարևոր -->
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+
+<title>Trading Layout</title>
+
+<style>
+body {
+    font-family: Arial, sans-serif;
+    background: #f3f3f3;
+    display: flex;
+    justify-content: center;
+    margin: 0;
+    padding: 15px;
+}
+
+/* 🔥 սա է հիմնական fix-ը */
+.container {
+    width: 100%;
+    max-width: 420px;
+    margin: 0 auto;
+}
+
+label {
+    display: block;
+    font-size: 13px;
+    margin-bottom: 4px;
+    color: #555;
+}
+
+input {
+    width: 100%;
+    padding: 10px; /* մի քիչ մեծացրեցի */
+    border: 2px solid #333;
+    border-radius: 20px;
+    outline: none;
+    box-sizing: border-box;
+    font-size: 16px; /* 📱 ավելի հարմար */
+}
+
+input:focus {
+    border-color: #007bff;
+}
+
+.block {
+    margin-bottom: 18px;
+}
+
+.row {
+    display: flex;
+    gap: 10px;
+}
+
+.row .field {
+    flex: 1;
+}
+
+.field.small {
+    max-width: 70px;
+}
+
+.field.medium {
+    max-width: 90px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <!-- Balance -->
+    <div class="block">
+        <label>Balance (USDT)</label>
+        <input type="number" id="balance">
+    </div>
+
+    <!-- Risk -->
+    <div class="row block">
+        <div class="field">
+            <label>Risk %</label>
+            <input type="number" id="riskPercent">
+        </div>
+        <div class="field">
+            <label>Risk (USDT)</label>
+            <input type="number" id="riskUSDT">
+        </div>
+    </div>
+
+    <!-- Entry + Position -->
+    <div class="row block">
+        <div class="field">
+            <label>Entry Price</label>
+            <input type="number" id="entry">
+        </div>
+        <div class="field">
+            <label>Position Size</label>
+            <input type="number" id="position">
+        </div>
+    </div>
+
+    <!-- Stop Loss -->
+    <div class="block">
+        <label>Stop Loss</label>
+        <div class="row">
+            <div class="field">
+                <label>Price</label>
+                <input type="number" id="slPrice">
+            </div>
+            <div class="field small">
+                <label>%</label>
+                <input type="number" id="slPercent">
+            </div>
+            <div class="field medium">
+                <label>USDT</label>
+                <input type="number" id="slUSDT">
+            </div>
+        </div>
+    </div>
+
+    <!-- Take Profit -->
+    <div class="block">
+        <label>Take Profit</label>
+        <div class="row">
+            <div class="field">
+                <label>Price</label>
+                <input type="number" id="tpPrice">
+            </div>
+            <div class="field small">
+                <label>%</label>
+                <input type="number" id="tpPercent">
+            </div>
+            <div class="field medium">
+                <label>USDT</label>
+                <input type="number" id="tpUSDT">
+            </div>
+        </div>
+    </div>
+
+    <!-- Max Leverage -->
+    <div class="block">
+        <label>Max Leverage</label>
+        <input type="number" id="leverage" readonly>
+    </div>
+
+</div>
+
+<script>
+// (Քո ամբողջ JS-ը թողնում եմ նույնը, ոչինչ չեմ փոխել)
+
+// Inputs
+const balanceInput = document.getElementById("balance");
+const riskPercentInput = document.getElementById("riskPercent");
+const riskUSDTInput = document.getElementById("riskUSDT");
+const positionInput = document.getElementById("position");
+
+const entryInput = document.getElementById("entry");
+const slPriceInput = document.getElementById("slPrice");
+const slPercentInput = document.getElementById("slPercent");
+const slUSDTInput = document.getElementById("slUSDT");
+
+const tpPriceInput = document.getElementById("tpPrice");
+const tpPercentInput = document.getElementById("tpPercent");
+const tpUSDTInput = document.getElementById("tpUSDT");
+
+const leverageInput = document.getElementById("leverage");
+
+// Risk ↔ USDT
+function calculateFromPercent() {
+    const balance = parseFloat(balanceInput.value);
+    const percent = parseFloat(riskPercentInput.value);
+
+    if (!isNaN(balance) && !isNaN(percent)) {
+        const risk = (balance * percent) / 100;
+        riskUSDTInput.value = risk.toFixed(2);
+        calculatePositionSize();
+    }
+}
+
+function calculateFromUSDT() {
+    const balance = parseFloat(balanceInput.value);
+    const risk = parseFloat(riskUSDTInput.value);
+
+    if (!isNaN(balance) && !isNaN(risk) && balance !== 0) {
+        const percent = (risk / balance) * 100;
+        riskPercentInput.value = percent.toFixed(2);
+        calculatePositionSize();
+    }
+}
+
+riskPercentInput.addEventListener("input", calculateFromPercent);
+riskUSDTInput.addEventListener("input", calculateFromUSDT);
+balanceInput.addEventListener("input", () => {
+    if(document.activeElement === riskPercentInput) calculateFromPercent();
+    else if(document.activeElement === riskUSDTInput) calculateFromUSDT();
+});
+
+// Stop Loss %
+function calculateSLPercent() {
+    const entry = parseFloat(entryInput.value);
+    const slPrice = parseFloat(slPriceInput.value);
+
+    if (!isNaN(entry) && !isNaN(slPrice) && entry !== 0) {
+        const percent = ((slPrice - entry) / entry) * 100;
+        slPercentInput.value = -Math.abs(percent).toFixed(2);
+    } else {
+        slPercentInput.value = "";
+    }
+
+    calculatePositionSize();
+}
+
+entryInput.addEventListener("input", calculateSLPercent);
+slPriceInput.addEventListener("input", calculateSLPercent);
+
+// Position Size
+function calculatePositionSize() {
+    const riskUSDT = parseFloat(riskUSDTInput.value);
+    const slPercent = parseFloat(slPercentInput.value);
+
+    if (!isNaN(riskUSDT) && !isNaN(slPercent) && slPercent !== 0) {
+        const position = (riskUSDT * 100) / Math.abs(slPercent);
+        positionInput.value = position.toFixed(2);
+    } else {
+        positionInput.value = "";
+    }
+
+    calculateSLUSDT();
+    calculateTP();
+    calculateMaxLeverage();
+}
+
+riskUSDTInput.addEventListener("input", calculatePositionSize);
+slPercentInput.addEventListener("input", calculatePositionSize);
+
+// Stop Loss USDT
+function calculateSLUSDT() {
+    const entry = parseFloat(entryInput.value);
+    const slPrice = parseFloat(slPriceInput.value);
+    const position = parseFloat(positionInput.value);
+
+    if (!isNaN(entry) && !isNaN(slPrice) && !isNaN(position) && entry !== 0) {
+        const loss = (slPrice - entry) / entry * position;
+        slUSDTInput.value = (-Math.abs(loss)).toFixed(2);
+    } else {
+        slUSDTInput.value = "";
+    }
+}
+
+// Take Profit
+function calculateTP() {
+    const entry = parseFloat(entryInput.value);
+    const tpPrice = parseFloat(tpPriceInput.value);
+    const position = parseFloat(positionInput.value);
+
+    if (!isNaN(entry) && !isNaN(tpPrice)) {
+        const percent = ((tpPrice - entry) / entry) * 100;
+        tpPercentInput.value = percent.toFixed(2);
+    } else {
+        tpPercentInput.value = "";
+    }
+
+    if (!isNaN(entry) && !isNaN(tpPrice) && !isNaN(position)) {
+        const profit = Math.abs((tpPrice - entry) / entry * position);
+        tpUSDTInput.value = profit.toFixed(2);
+    } else {
+        tpUSDTInput.value = "";
+    }
+}
+
+// Position → Risk
+positionInput.addEventListener("input", () => {
+    const pos = parseFloat(positionInput.value);
+    const slPerc = parseFloat(slPercentInput.value);
+    const balance = parseFloat(balanceInput.value);
+
+    if (!isNaN(pos) && !isNaN(slPerc)) {
+        const newRisk = pos * Math.abs(slPerc) / 100;
+        riskUSDTInput.value = newRisk.toFixed(2);
+
+        if(!isNaN(balance) && balance !== 0){
+            riskPercentInput.value = ((newRisk / balance) * 100).toFixed(2);
+        }
+    }
+
+    calculateSLUSDT();
+    calculateTP();
+    calculateMaxLeverage();
+});
+
+// Max Leverage
+function calculateMaxLeverage() {
+    const position = parseFloat(positionInput.value);
+    const risk = parseFloat(riskUSDTInput.value);
+
+    if(!isNaN(position) && !isNaN(risk) && risk !== 0){
+        leverageInput.value = (position / risk).toFixed(2);
+    } else {
+        leverageInput.value = "";
+    }
+}
+
+// Events
+tpPriceInput.addEventListener("input", calculateTP);
+entryInput.addEventListener("input", () => {
+    calculateSLPercent();
+    calculateTP();
+    calculateSLUSDT();
+});
+slPriceInput.addEventListener("input", () => {
+    calculateSLPercent();
+    calculateSLUSDT();
+});
+</script>
+
+</body>
+</html>
+Ask AI
