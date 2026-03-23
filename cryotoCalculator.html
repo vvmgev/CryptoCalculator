@@ -315,6 +315,14 @@ slPriceInput.addEventListener("input", () => {
     calculateSLPercent();
     calculateSLUSDT();
 });
+function hideKeyboard() {
+  if (document.activeElement instanceof HTMLElement) {
+    document.activeElement.blur();
+  }
+}
+window.addEventListener('popstate', () => {
+  hideKeyboard();
+});
 </script>
 
 </body>
