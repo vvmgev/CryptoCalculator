@@ -72,7 +72,6 @@ input:focus {
 <body>
 
 <div class="container">
-    <h1>qqqq</h1>
 
     <!-- Balance -->
     <div class="block">
@@ -260,7 +259,7 @@ function calculateTP() {
 
     if (!isNaN(entry) && !isNaN(tpPrice)) {
         const percent = ((tpPrice - entry) / entry) * 100;
-        tpPercentInput.value = percent.toFixed(2);
+        tpPercentInput.value = Math.abs(percent.toFixed(2));
     } else {
         tpPercentInput.value = "";
     }
